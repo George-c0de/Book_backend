@@ -32,3 +32,20 @@ class ArtworksSerializer(serializers.ModelSerializer):
         data['genres'] = list_genres
 
         return data
+
+
+class AuthorDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        """
+        :param instance:
+        :return:
+        """
+        data = super().to_representation(instance)
+        data['artworks'] = {}
+        for artwork in Artworks.objects.all():
+            data['artworks'][artwork] = data['artworks'].get(artwork, 0) + 1
+        return data
