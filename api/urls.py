@@ -2,9 +2,8 @@ from django.urls import path, include
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
-
 from api.views import Search, FilterAuthor, FilterArtworks, FirstLetterAuthor, YearCategoryArtworks, GenreListCategory, \
-    GetAuthor
+    GetAuthor, GetBook
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -13,7 +12,7 @@ schema_view = get_schema_view(
         description="Your description",
     ),
     public=True,
-    permission_classes=(permissions.AllowAny,),
+    permission_classes=[permissions.AllowAny],
 )
 urlpatterns = [
     # User
@@ -36,6 +35,10 @@ urlpatterns = [
     path('api/genre-names/', GenreListCategory.as_view()),
 
     # Получение автора
-    path('api/detail-author/<int:pk>', GetAuthor.as_view()),
+    path('api/detail-author/<int:pk>/', GetAuthor.as_view()),
+
+    # Получение книги
+    path('api/book/<int:pk>', GetBook.as_view()),
+
 
 ]

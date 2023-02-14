@@ -8,6 +8,8 @@ from api.models import Author, Artworks, Genre
 from api.serializer import AuthorSerializer, ArtworksSerializer, AuthorDetailSerializer
 from collections import defaultdict
 from django.shortcuts import get_object_or_404
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 
 
 def get_first_litters(model) -> dict:
@@ -39,7 +41,14 @@ class Library(ListModelMixin, GenericAPIView):
         return Response(serializer.data)
 
 
-class Search(APIView):
+class Search(GenericAPIView):
+    """
+    Поиск среди авторов и произведений
+    """
+
+    @swagger_auto_schema(manual_parameters=[
+        openapi.Parameter('value', in_=openapi.IN_QUERY, description='Значение для поиска', type=openapi.TYPE_STRING)
+    ])
     def get(self, request):
         value = request.GET.get('value')
         authors = Author.objects.filter(name__icontains=value)
@@ -124,6 +133,14 @@ class GenreListCategory(ListModelMixin, GenericAPIView):
 class GetAuthor(RetrieveModelMixin, GenericAPIView):
     queryset = Author.objects.all()
     serializer_class = AuthorDetailSerializer
+
+    def get(self, request, pk):
+        return self.retrieve(request, pk=pk)
+
+
+class GetBook(RetrieveModelMixin, GenericAPIView):
+    queryset = Artworks.objects.all()
+    serializer_class = ArtworksSerializer
 
     def get(self, request, pk):
         return self.retrieve(request, pk=pk)
