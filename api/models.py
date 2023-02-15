@@ -12,8 +12,8 @@ class Settings(models.Model):
     def __str__(self):
         return f'{self.user.username}'
 
-    percent = models.IntegerField('Яркость экрана', validators=(validate_percent,))
-    size = models.IntegerField('Размер шрифта')
+    percent = models.IntegerField('Яркость экрана', validators=(validate_percent,), default=50)
+    size = models.IntegerField('Размер шрифта', default=16)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
 
@@ -25,7 +25,7 @@ class Genre(models.Model):
     def __str__(self):
         return f'{self.name}'
 
-    name = models.CharField('Название', max_length=150)
+    name = models.CharField('Название', max_length=150, unique=True)
 
 
 class Author(models.Model):
@@ -104,5 +104,8 @@ class BookState(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     book = models.ForeignKey(Artworks, on_delete=models.CASCADE)
     epubcfi = models.CharField('Место остановки', max_length=150)
+    percent = models.IntegerField('Статус чтения', validators=(validate_percent,))
+
+    show = models.BooleanField('Показывать', default=True)
 
     date_update = models.DateTimeField('Дата обновления', auto_now=True)

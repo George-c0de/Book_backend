@@ -1,7 +1,6 @@
 from django.contrib import admin
 
-from api.models import Genre, Author, Artworks
-
+from api.models import Artworks, Author, Genre
 
 admin.site.register(Artworks)
 admin.site.register(Author)

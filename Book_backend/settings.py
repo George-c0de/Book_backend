@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -117,3 +118,26 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+DJOSER = {
+    'SERIALIZERS': {
+        'activation': 'djoser.serializers.ActivationSerializer',
+        'password_reset': 'djoser.serializers.SendEmailResetSerializer',
+        'password_reset_confirm': 'djoser.serializers.PasswordResetConfirmSerializer',
+        'password_reset_confirm_retype': 'djoser.serializers.PasswordResetConfirmRetypeSerializer',
+        'set_password': 'djoser.serializers.SetPasswordSerializer',
+        'set_password_retype': 'djoser.serializers.SetPasswordRetypeSerializer',
+        'set_username': 'djoser.serializers.SetUsernameSerializer',
+        'set_username_retype': 'djoser.serializers.SetUsernameRetypeSerializer',
+        'username_reset': 'djoser.serializers.SendEmailResetSerializer',
+        'username_reset_confirm': 'djoser.serializers.UsernameResetConfirmSerializer',
+        'username_reset_confirm_retype': 'djoser.serializers.UsernameResetConfirmRetypeSerializer',
+        'user_create': 'api.serializer.UserCreateSerializer',
+        'user_create_password_retype': 'djoser.serializers.UserCreatePasswordRetypeSerializer',
+        'user_delete': 'djoser.serializers.UserDeleteSerializer',
+        'user': 'djoser.serializers.UserSerializer',
+        'current_user': 'djoser.serializers.UserSerializer',
+        'token': 'djoser.serializers.TokenSerializer',
+        'token_create': 'djoser.serializers.TokenCreateSerializer',
+    }
+}
