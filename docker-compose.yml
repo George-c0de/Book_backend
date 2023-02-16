@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - db-data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=VinNumbers
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+  web:
+    expose:
+      - 8000
+    restart: always
+    volumes:
+      - .:/app
+      - static_volume:/home/app/web/staticfiles
+      - media_volume:/home/app/web/media
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - ./.env
+    build: .
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+      - media_volume:/home/app/web/media
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+  redis:
+    image: redis:alpine
+  celery:
+    restart: always
+    build:
+      context: .
+    command: celery -A vin_numbers worker -l info
+    volumes:
+      - .:/app
+    environment:
+      - DB_HOST=db
+      - DB_NAME=VinNumbers
+      - DB_USER=postgres
+      - DB_PASS=123
+    depends_on:
+      - db
+      - redis
+      - web
+volumes:
+  db-data:
+  static_volume:
+  media_volume:

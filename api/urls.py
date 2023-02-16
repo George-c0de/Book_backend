@@ -69,4 +69,5 @@ urlpatterns = [
     path('api/delete-book-state/<int:pk>/', DeleteBookState.as_view()),
     # Обновление состояния книги
     path('api/update-state-book/<int:pk>/', UpdateStateBook.as_view()),
+
 ]

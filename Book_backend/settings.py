@@ -12,8 +12,57 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 
 DEBUG = True
+################
+# CORS
+################
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "127.0.0.1",
+    '5.63.158.47'
+    '*',
+]
 
-ALLOWED_HOSTS = []
+# Большие буквы
+ALL_HOSTS = (
+    "http://127.0.0.1:8000",
+    'http://localhost:3000',
+    "http://127.0.0.1:3000",
+    'http://5.63.158.47/',
+)
+
+CSRF_TRUSTED_ORIGINS = ALL_HOSTS
+
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = ALL_HOSTS
+
+CORS_ALLOWED_ORIGIN_REGEXES = ALL_HOSTS
+
+CORS_ORIGIN_WHITELIST = ALL_HOSTS
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -67,7 +116,6 @@ TEMPLATES = [
 WSGI_APPLICATION = "Book_backend.wsgi.application"
 
 # Database
-# https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES = {
     'default': {
@@ -87,7 +135,6 @@ DATABASES = {
 }
 
 # Password validation
-# https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -106,17 +153,18 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-# TIME_ZONE = "UTC"
 TIME_ZONE = 'Europe/Moscow'
 USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = "static/"
-
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MEDIA_URL = '/media/'
-
+STATIC_URL = '/staticfiles/'
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/mediafiles/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DJOSER = {

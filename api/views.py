@@ -1,6 +1,5 @@
 from collections import defaultdict
 
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
@@ -10,7 +9,7 @@ from rest_framework.generics import (GenericAPIView, ListAPIView,
                                      ListCreateAPIView, CreateAPIView, UpdateAPIView)
 from rest_framework.mixins import (DestroyModelMixin, ListModelMixin,
                                    RetrieveModelMixin)
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -35,9 +34,25 @@ def get_first_litters(model) -> dict:
     return letters
 
 
+def check_in_reading_list(user: User | None, book: Artworks) -> dict | None:
+    """
+    Проверяет есть ли книга в списке для чтения
+    :param book: Книга для проверки
+    :param user: Пользователь
+    :return: Если книга есть в списке для чтения выводит словарь с процентами для чтения, если нет пустой список
+    """
+    if BookState.objects.filter(user=user).filter(book=book).exists():
+        return {
+            'percent': BookState.objects.filter(user=user).get(book=book).percent
+        }
+    else:
+        return None
+
+
 class Library(ListModelMixin, GenericAPIView):
     """
     Endpoints для библиотеки
+    Получение списка всех авторов, отсортированных по ФИО
     """
     queryset = Author.objects.all().order_by('name')
     serializer_class = AuthorSerializer
@@ -52,6 +67,8 @@ class Library(ListModelMixin, GenericAPIView):
 class Search(GenericAPIView):
     """
     Поиск среди авторов и произведений
+    Принимает переменную value - str
+    Если value не задана, выдает полный список авторов и произведений
     """
 
     @swagger_auto_schema(manual_parameters=[
@@ -65,6 +82,8 @@ class Search(GenericAPIView):
             'authors': AuthorSerializer(authors, many=True).data,
             'artworks': ArtworksSerializer(artworks, many=True).data,
         }
+        for el in results['artworks']:
+            el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
         return Response(status=status.HTTP_200_OK, data=results)
 
 
@@ -75,11 +94,13 @@ class FilterArtworks(ListModelMixin, GenericAPIView):
     permission_classes = ()
 
     def list(self, request, *args, **kwargs):
+        data = self.serializer_class(
+            self.queryset.filter(name__startswith=request.GET.get('value', '')),
+            many=True).data
+        for el in data:
+            el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
         return Response(
-            data=self.serializer_class(
-                self.queryset.filter(
-                    name__startswith=request.GET.get('value', '')
-                ), many=True).data,
+            data=data,
             status=200
         )
 
@@ -152,9 +173,34 @@ class GenreListCategory(ListModelMixin, GenericAPIView):
         return Response(status=status.HTTP_200_OK, data=self.list(request))
 
 
+def last_book_by_author(user: int, author: Author) -> dict | None:
+    """
+    Получение последней книги для чтения по автору, если нет, возвращаем None
+    :param user: Авторизированный пользователь или None, id
+    :param author: Автор для поиска
+    :return: Возвращаем название и процент книги, если не нашли, None
+    """
+    if BookState.objects.filter(book__author=author).filter(user=user).exists():
+        book = BookState.objects.filter(book__author=author).filter(user=user).order_by('-date_update').first()
+        return {
+            'id': book.book.id,
+            'name': book.book.name,
+            'percent': book.percent,
+        }
+    else:
+        return None
+
+
 class GetAuthor(RetrieveModelMixin, GenericAPIView):
     queryset = Author.objects.all()
     serializer_class = AuthorDetailSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+        data['last'] = last_book_by_author(user=request.user.id, author=data['id'])
+        return Response(data)
 
     def get(self, request, pk):
         return self.retrieve(request, pk=pk)
@@ -163,6 +209,13 @@ class GetAuthor(RetrieveModelMixin, GenericAPIView):
 class GetBook(RetrieveModelMixin, GenericAPIView):
     queryset = Artworks.objects.all()
     serializer_class = ArtworksSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        for el in serializer.data:
+            el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
+        return Response(serializer.data)
 
     def get(self, request, pk):
         return self.retrieve(request, pk=pk)
@@ -276,6 +329,8 @@ class FilterYearArtworks(GenericAPIView):
     def get(self, request):
         year = request.GET.get('year', '')
         objs = self.get_serializer(self.get_queryset().filter(date=year), many=True).data
+        for artwork in objs:
+            artwork['read'] = check_in_reading_list(user=request.user.id, book=artwork.get('id'))
         return Response(status=status.HTTP_200_OK, data=objs)
 
 
@@ -286,6 +341,8 @@ class FilterGenreArtworks(GenericAPIView):
     def get(self, request):
         genre = request.GET.get('genre', '')
         objs = self.get_serializer(self.get_queryset().filter(genres__name=genre), many=True).data
+        for artwork in objs:
+            artwork['read'] = check_in_reading_list(user=request.user.id, book=artwork.get('id'))
         return Response(status=status.HTTP_200_OK, data=objs)
 
 
@@ -302,5 +359,7 @@ class GetGenreAuthorBooks(GenericAPIView):
         objs = self.get_serializer(
             self.get_queryset().filter(author__id=int(author)).filter(genres__id=int(genre)),
             many=True
-        )
-        return Response(status=status.HTTP_200_OK, data=objs.data)
+        ).data
+        for artwork in objs:
+            artwork['read'] = check_in_reading_list(user=request.user.id, book=artwork.get('id'))
+        return Response(status=status.HTTP_200_OK, data=objs)
