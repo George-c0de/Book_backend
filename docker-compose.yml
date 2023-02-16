@@ -5,10 +5,8 @@ services:
     image: postgres:latest
     volumes:
       - db-data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_DB=VinNumbers
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=123
+    env_file:
+      - ./.env
   web:
     expose:
       - 8000
@@ -30,26 +28,7 @@ services:
       - media_volume:/home/app/web/media
     ports:
       - "80:80"
-      - "443:443"
     depends_on:
-      - web
-  redis:
-    image: redis:alpine
-  celery:
-    restart: always
-    build:
-      context: .
-    command: celery -A vin_numbers worker -l info
-    volumes:
-      - .:/app
-    environment:
-      - DB_HOST=db
-      - DB_NAME=VinNumbers
-      - DB_USER=postgres
-      - DB_PASS=123
-    depends_on:
-      - db
-      - redis
       - web
 volumes:
   db-data:

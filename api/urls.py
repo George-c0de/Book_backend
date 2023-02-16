@@ -3,11 +3,13 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-from api.views import (FilterArtworks, FilterAuthor, FirstLetterAuthor,
-                       GenreListCategory, GetAuthor, GetBook, GetSettings,
-                       Search, YearCategoryArtworks, CustomRegistrationView, CreateFeedBack, CreateBookState,
-                       ListAPIView, ListBookState, DeleteBookState, UpdateStateBook, FilterYearArtworks,
-                       FilterGenreArtworks, GetGenreAuthorBooks)
+from api.views import (CreateBookState, CreateFeedBack, CustomRegistrationView,
+                       DeleteBookState, FilterArtworks, FilterAuthor,
+                       FilterGenreArtworks, FilterYearArtworks,
+                       FirstLetterAuthor, GenreListCategory, GetAuthor,
+                       GetBook, GetGenreAuthorBooks, GetSettings, ListAPIView,
+                       ListBookState, Search, UpdateStateBook,
+                       YearCategoryArtworks)
 
 schema_view = get_schema_view(
     openapi.Info(

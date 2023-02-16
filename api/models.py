@@ -40,7 +40,7 @@ class Author(models.Model):
     name_en = models.CharField('ФИО автора транслитом', max_length=300)
 
     date_birth = models.DateField('Дата рождения')
-    date_death = models.DateField('Дата смерти')
+    date_death = models.DateField('Дата смерти', null=True)
 
     photo = models.ImageField('Фотография', upload_to='photo_author')
 

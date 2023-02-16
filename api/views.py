@@ -1,22 +1,64 @@
 from collections import defaultdict
 
 from django.contrib.auth.models import User
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from rest_framework.generics import (GenericAPIView, ListAPIView,
-                                     ListCreateAPIView, CreateAPIView, UpdateAPIView)
-from rest_framework.mixins import (DestroyModelMixin, ListModelMixin,
-                                   RetrieveModelMixin)
+from rest_framework.generics import (CreateAPIView, GenericAPIView,
+                                     ListAPIView, UpdateAPIView)
+from rest_framework.mixins import (ListModelMixin, RetrieveModelMixin)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.models import Artworks, Author, Genre, Settings, Feedback, BookState
+from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
 from api.serializer import (ArtworksSerializer, AuthorDetailSerializer,
-                            AuthorSerializer, SettingsSerializer, UserCreateSerializer, FeedbackSerializer,
-                            BookStateSerializer, ListBookStateSerializer, UpdateBookStateSerializer)
+                            AuthorSerializer, BookStateSerializer,
+                            FeedbackSerializer, ListBookStateSerializer,
+                            SettingsSerializer, UpdateBookStateSerializer,
+                            UserCreateSerializer, SearchSerializer, SelectSearch)
+
+
+class PaginationApiView:
+    """
+    Пагинация
+    """
+
+    def __init__(self, request, data):
+        """
+        Создание класса для пагинации
+        :param request: В зарпосе передаются значения page, limit
+        :param data: Данные, которые нужно разбить
+        """
+        page = int(request.GET.get('page', 1))
+        limit = int(request.GET.get('limit', 10))
+        if limit < 0:
+            limit = 10
+        if limit > 100:
+            limit = 100
+        p = Paginator(data, limit)
+        if page > p.num_pages:
+            page = p.num_pages
+        elif page < 1:
+            page = 1
+        page_data = p.get_page(page)
+        self.count = p.count
+        self.limit = limit
+        self.page = page
+        self.total = p.num_pages
+        self.items = page_data.object_list
+
+    def get_str(self) -> dict:
+        data_response = {
+            "count": self.count,
+            "limit": self.limit,
+            "page": self.page,
+            "total": self.total,
+            "items": self.items,
+        }
+        return data_response
 
 
 def get_first_litters(model) -> dict:
@@ -66,25 +108,77 @@ class Library(ListModelMixin, GenericAPIView):
 
 class Search(GenericAPIView):
     """
-    Поиск среди авторов и произведений
-    Принимает переменную value - str
-    Если value не задана, выдает полный список авторов и произведений
+    Поиск производиться среди авторов и произведений, принимает value - str, null=True
+    Если value = null, выдает полный список авторов и произведений
     """
 
-    @swagger_auto_schema(manual_parameters=[
-        openapi.Parameter('value', in_=openapi.IN_QUERY, description='Значение для поиска', type=openapi.TYPE_STRING)
-    ])
-    def get(self, request):
+    def get_filters(self, request) -> tuple:
+        """Получить все фильтры"""
         value = request.GET.get('value', '')
-        authors = Author.objects.filter(name__icontains=value)
-        artworks = Artworks.objects.filter(name__icontains=value)
-        results = {
-            'authors': AuthorSerializer(authors, many=True).data,
-            'artworks': ArtworksSerializer(artworks, many=True).data,
-        }
-        for el in results['artworks']:
-            el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
-        return Response(status=status.HTTP_200_OK, data=results)
+        author = request.GET.get('author', False)
+        artwork = request.GET.get('artworks', False)
+        return value, author, artwork
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'value', in_=openapi.IN_QUERY, description='Значение для поиска',
+                type=openapi.TYPE_STRING, default=''
+            ),
+            openapi.Parameter(
+                'author', in_=openapi.IN_QUERY, description='bool значение, задает критерий поиска',
+                type=openapi.TYPE_BOOLEAN, default=False
+            ),
+            openapi.Parameter(
+                'artworks', in_=openapi.IN_QUERY, description='bool значение, задает критерий поиска',
+                type=openapi.TYPE_BOOLEAN, default=False
+            ),
+            openapi.Parameter(
+                'page', in_=openapi.IN_QUERY, description='Страница', type=openapi.TYPE_INTEGER, default=1
+            ),
+            openapi.Parameter(
+                'limit', in_=openapi.IN_QUERY, description='Лимит страницы', type=openapi.TYPE_INTEGER, default=10
+            ),
+        ],
+        responses={
+            200: openapi.Response('Successful Response', schema=SearchSerializer),
+        })
+    def get(self, request):
+        data = {}
+        AUTHOR = 'author'
+        ARTWORKS = 'artworks'
+        value, author, artwork = self.get_filters(request=request)
+
+        if author:
+            authors = Author.objects.filter(name__icontains=value)
+            data['authors'] = PaginationApiView(
+                request=request,
+                data=AuthorSerializer(authors, many=True).data
+            ).get_str()
+        elif artwork:
+            artworks = Artworks.objects.filter(name__icontains=value)
+            data['artworks'] = data = ArtworksSerializer(artworks, many=True).data
+            for el in data.get('artworks', []):
+                el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
+            data['artworks'] = PaginationApiView(data=data, request=request)
+        else:
+            authors = Author.objects.filter(name__icontains=value)
+            artworks = Artworks.objects.filter(name__icontains=value)
+            data['authors'] = AuthorSerializer(authors, many=True).data
+            data['artworks'] = ArtworksSerializer(artworks, many=True).data
+
+            for el in data.get('artworks', []):
+                el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
+
+            new_data = []
+            for author_t, artw_t in zip(data['authors'], data['artworks']):
+                author_t['type'] = AUTHOR
+                artw_t['type'] = ARTWORKS
+                new_data.append(author_t)
+                new_data.append(artw_t)
+            data = PaginationApiView(data=new_data, request=request).get_str()
+
+        return Response(status=status.HTTP_200_OK, data=data)
 
 
 class FilterArtworks(ListModelMixin, GenericAPIView):

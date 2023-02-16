@@ -1,12 +1,13 @@
 from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
-
-from api.models import Artworks, Author, Genre, Settings, Feedback, BookState
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 from django.db import IntegrityError, transaction
-from rest_framework import serializers
+from django.shortcuts import get_object_or_404
 from djoser.conf import settings
+from rest_framework import serializers
+
+from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
+from drf_yasg import openapi
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -184,3 +185,101 @@ class ListBookStateSerializer(serializers.ModelSerializer):
         data['name'] = artworks.name
         data['author'] = artworks.author.all().values_list('name', flat=True)
         return data
+
+
+class SelectSearch(serializers.Serializer):
+    author = serializers.IntegerField()
+    artworks = serializers.IntegerField()
+
+
+class ForSearchSerializer(serializers.JSONField):
+    class Meta:
+        swagger_schema_fields = {
+            "type": openapi.TYPE_OBJECT,
+            "title": "Artworks",
+            "properties": {
+                "name": openapi.Schema(
+                    title="name",
+                    type=openapi.TYPE_STRING,
+                    description='Название книги'
+                ),
+                "id": openapi.Schema(
+                    title="id",
+                    type=openapi.TYPE_INTEGER,
+                    description='Id книги',
+                    read_only=True,
+                ),
+                "author": openapi.Schema(
+                    title="author",
+                    type=openapi.TYPE_STRING,
+                    description='ФИО автора'
+                ),
+                "read": openapi.Schema(
+                    title="read",
+                    type=openapi.TYPE_OBJECT,
+                    nullable=True,
+                    properties={
+                        "percent": openapi.Schema(
+                            title="percent",
+                            type=openapi.TYPE_STRING,
+                            format=openapi.FORMAT_INT32,
+                            description='Процент прочтения'
+                        ),
+                    }
+                ),
+                "type": openapi.Schema(
+                    title="type",
+                    type=openapi.TYPE_STRING,
+                    description='Тип переменной',
+                    example='author or artworks'
+                ),
+            },
+
+        }
+
+
+class ForSearchAuthorSerializer(serializers.JSONField):
+    class Meta:
+        swagger_schema_fields = {
+            "type": openapi.TYPE_OBJECT,
+            "title": "Авторы",
+            "properties": {
+                "id": openapi.Schema(
+                    title="id",
+                    type=openapi.TYPE_INTEGER,
+                    description='Id',
+                    read_only=True,
+                ),
+                "name": openapi.Schema(
+                    title="name",
+                    type=openapi.TYPE_STRING,
+                    description='ФИО',
+                    maxLength=300,
+                    minLength=1,
+                ),
+                "date_birth": openapi.Schema(
+                    title="date_birth",
+                    type=openapi.TYPE_STRING,
+                    description='Дата рождения',
+                    format=openapi.FORMAT_DATE
+                ),
+                "date_death": openapi.Schema(
+                    title="date_death",
+                    type=openapi.TYPE_STRING,
+                    format=openapi.FORMAT_DATE,
+                    description='Дата смерти',
+                    nullable=True
+                ),
+                "info": openapi.Schema(
+                    title="info",
+                    type=openapi.TYPE_STRING,
+                    description='Информация',
+                ),
+            },
+
+        }
+
+
+class SearchSerializer(serializers.Serializer):
+    author = ForSearchAuthorSerializer()
+    artworks = ForSearchSerializer()
