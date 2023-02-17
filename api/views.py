@@ -8,17 +8,19 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import (CreateAPIView, GenericAPIView,
                                      ListAPIView, UpdateAPIView)
-from rest_framework.mixins import (ListModelMixin, RetrieveModelMixin)
+from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
-from api.serializer import (ArtworksSerializer, AuthorDetailSerializer,
-                            AuthorSerializer, BookStateSerializer,
-                            FeedbackSerializer, ListBookStateSerializer,
+from api.serializer import (ArtworksSerializer,
+                            ArtworksWithoutAuthorSerializer,
+                            AuthorDetailSerializer, AuthorSerializer,
+                            BookStateSerializer, FeedbackSerializer,
+                            FeedBackSerializer, FirstLitterSerializer,
+                            ListBookStateSerializer, SearchSerializer,
                             SettingsSerializer, UpdateBookStateSerializer,
-                            UserCreateSerializer, SearchSerializer, SelectSearch)
+                            UserCreateSerializer, YearArtworksSerializer)
 
 
 class PaginationApiView:
@@ -36,8 +38,7 @@ class PaginationApiView:
         limit = int(request.GET.get('limit', 10))
         if limit < 0:
             limit = 10
-        if limit > 100:
-            limit = 100
+        limit = min(limit, 100)
         p = Paginator(data, limit)
         if page > p.num_pages:
             page = p.num_pages
@@ -51,17 +52,16 @@ class PaginationApiView:
         self.items = page_data.object_list
 
     def get_str(self) -> dict:
-        data_response = {
+        return {
             "count": self.count,
             "limit": self.limit,
             "page": self.page,
             "total": self.total,
             "items": self.items,
         }
-        return data_response
 
 
-def get_first_litters(model) -> dict:
+def get_first_litters(model) -> list:
     """
     Получение всех первым букв в названии у модели
     :param:
@@ -72,11 +72,10 @@ def get_first_litters(model) -> dict:
     for name in model.objects.values_list('name', flat=True):
         first_letter = name[0]
         letters[first_letter] += 1
+    return [{'name': result, 'count': value} for result, value in letters.items()]
 
-    return letters
 
-
-def check_in_reading_list(user: User | None, book: Artworks) -> dict | None:
+def check_in_reading_list(user: User | None, book: Artworks) -> int | None:
     """
     Проверяет есть ли книга в списке для чтения
     :param book: Книга для проверки
@@ -84,9 +83,7 @@ def check_in_reading_list(user: User | None, book: Artworks) -> dict | None:
     :return: Если книга есть в списке для чтения выводит словарь с процентами для чтения, если нет пустой список
     """
     if BookState.objects.filter(user=user).filter(book=book).exists():
-        return {
-            'percent': BookState.objects.filter(user=user).get(book=book).percent
-        }
+        return BookState.objects.filter(user=user).get(book=book).percent
     else:
         return None
 
@@ -145,8 +142,6 @@ class Search(GenericAPIView):
         })
     def get(self, request):
         data = {}
-        AUTHOR = 'author'
-        ARTWORKS = 'artworks'
         value, author, artwork = self.get_filters(request=request)
 
         if author:
@@ -171,11 +166,12 @@ class Search(GenericAPIView):
                 el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
 
             new_data = []
+            AUTHOR = 'author'
+            ARTWORKS = 'artworks'
             for author_t, artw_t in zip(data['authors'], data['artworks']):
                 author_t['type'] = AUTHOR
                 artw_t['type'] = ARTWORKS
-                new_data.append(author_t)
-                new_data.append(artw_t)
+                new_data.extend((author_t, artw_t))
             data = PaginationApiView(data=new_data, request=request).get_str()
 
         return Response(status=status.HTTP_200_OK, data=data)
@@ -229,9 +225,14 @@ class GenreList(ListAPIView):
     serializer_class = Genre
 
 
-class FirstLetterAuthor(APIView):
+class FirstLetterAuthor(GenericAPIView):
     """Получение списка букв для поиска авторов по первой букве"""
+    serializer_class = FirstLitterSerializer(many=True)
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response('Successful Response', schema=FirstLitterSerializer(many=True)),
+        })
     def get(self, request):
         letters = get_first_litters(model=Author)
         return Response(status=200, data=letters)
@@ -241,28 +242,35 @@ class YearCategoryArtworks(GenericAPIView):
     """Вывод всех дат и кол-во произведений"""
     queryset = Artworks.objects.all().values_list('date', flat=True)
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response('Successful Response', schema=FirstLitterSerializer(many=True)),
+        })
     def get(self, request, *args, **kwargs):
         years = {}
         for artwork in self.get_queryset():
             years[artwork] = years.get(artwork, 0) + 1
-        return Response(status=status.HTTP_200_OK, data=years)
+        result = [{'name': year, 'count': value} for year, value in years.items()]
+        return Response(status=status.HTTP_200_OK, data=result)
 
 
 class GenreListCategory(ListModelMixin, GenericAPIView):
+    """Получение списка жанров и кол-во"""
     queryset = Genre.objects.all().values_list('name', flat=True)
 
     def list(self, request, *args, **kwargs):
-        names = []
-        for name in self.get_queryset():
-            names.append(
-                {
-                    'name': name,
-                    'count': Artworks.objects.filter(genres__name=name).count(),
+        return [
+            {
+                'name': name,
+                'count': Artworks.objects.filter(genres__name=name).count(),
+            }
+            for name in self.get_queryset()
+        ]
 
-                }
-            )
-        return names
-
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response('Successful Response', schema=FirstLitterSerializer(many=True)),
+        })
     def get(self, request):
         return Response(status=status.HTTP_200_OK, data=self.list(request))
 
@@ -328,11 +336,10 @@ class GetSettings(GenericAPIView):
     def post(self, request):
         obj = get_object_or_404(self.get_queryset(), user_id=request.user.id)
         obj_ser = self.get_serializer(obj, request.data, partial=True)
-        if obj_ser.is_valid():
-            obj_ser.save()
-            return Response(status=status.HTTP_200_OK, data=obj_ser.data)
-        else:
+        if not obj_ser.is_valid():
             return Response(status=status.HTTP_400_BAD_REQUEST, data=obj_ser.errors)
+        obj_ser.save()
+        return Response(status=status.HTTP_200_OK, data=obj_ser.data)
 
 
 class CustomRegistrationView(CreateAPIView):
@@ -358,11 +365,39 @@ class CreateFeedBack(CreateAPIView):
     serializer_class = FeedbackSerializer
     permission_classes = (IsAuthenticated,)
 
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['text'],
+            properties={
+                'text': openapi.Schema(type=openapi.TYPE_STRING),
+            },
+        ),
+        responses={
+            201: openapi.Response('Created', schema=FeedBackSerializer()),
+            400: openapi.Response('Bad Request', schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'errors': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                        )
+                    )
+                }
+            )),
+            401: openapi.Response('Authentication credentials were not provided.')
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        return self.create(request)
+
     def create(self, request, *args, **kwargs):
         data = {'user': request.user.id}
-        data.update(request.data)
+        data |= request.data
         serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -375,12 +410,42 @@ class CreateBookState(CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         data = {'user': request.user.id}
-        data.update(request.data)
+        data |= request.data
         serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['epubcfi', 'percent', 'book'],
+            properties={
+                'epubcfi': openapi.Schema(type=openapi.TYPE_STRING),
+                'percent': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'book': openapi.Schema(type=openapi.TYPE_INTEGER),
+            },
+        ),
+        responses={
+            201: openapi.Response('Created', schema=FeedBackSerializer()),
+            400: openapi.Response('Bad Request', schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'errors': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                        )
+                    )
+                }
+            )),
+            401: openapi.Response('Authentication credentials were not provided.')
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        return self.create(request)
 
 
 class ListBookState(ListModelMixin, GenericAPIView):
@@ -420,6 +485,17 @@ class FilterYearArtworks(GenericAPIView):
     serializer_class = ArtworksSerializer
     queryset = Artworks.objects.all()
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'year', in_=openapi.IN_QUERY, description='Значение для поиска',
+                type=openapi.TYPE_STRING, default='Передается год для поиска'
+            ),
+        ], responses={
+            200: openapi.Response('Successful Response', schema=YearArtworksSerializer),
+        },
+
+    )
     def get(self, request):
         year = request.GET.get('year', '')
         objs = self.get_serializer(self.get_queryset().filter(date=year), many=True).data
@@ -432,6 +508,17 @@ class FilterGenreArtworks(GenericAPIView):
     serializer_class = ArtworksSerializer
     queryset = Artworks.objects.all()
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'genre', in_=openapi.IN_QUERY, description='Значение для поиска',
+                type=openapi.TYPE_STRING, default='Название жанра для поиска'
+            ),
+        ], responses={
+            200: openapi.Response('Successful Response', schema=YearArtworksSerializer(many=True)),
+        },
+
+    )
     def get(self, request):
         genre = request.GET.get('genre', '')
         objs = self.get_serializer(self.get_queryset().filter(genres__name=genre), many=True).data
@@ -442,8 +529,28 @@ class FilterGenreArtworks(GenericAPIView):
 
 class GetGenreAuthorBooks(GenericAPIView):
     queryset = Artworks.objects.all()
-    serializer_class = ArtworksSerializer
+    serializer_class = ArtworksWithoutAuthorSerializer
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'author', in_=openapi.IN_QUERY, description='Значение для поиска',
+                type=openapi.TYPE_STRING, default='Id автора'
+            ),
+            openapi.Parameter(
+                'genre', in_=openapi.IN_QUERY, description='Значение для поиска',
+                type=openapi.TYPE_STRING, default='Id жанра'
+            ),
+        ], responses={
+            200: openapi.Response('Successful Response', schema=ArtworksWithoutAuthorSerializer(many=True)),
+            400: openapi.Response('errors', schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'message': openapi.Schema(type=openapi.TYPE_STRING, default='Все поля должны быть заполнены')
+                })),
+        },
+
+    )
     def get(self, request):
         author = request.GET.get('author')
         genre = request.GET.get('genre')

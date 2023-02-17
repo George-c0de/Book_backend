@@ -2,12 +2,13 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 from django.db import IntegrityError, transaction
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from djoser.conf import settings
+from drf_yasg import openapi
 from rest_framework import serializers
 
 from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
-from drf_yasg import openapi
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -34,11 +35,17 @@ class ArtworksSerializer(serializers.ModelSerializer):
         :return:
         """
         data = super().to_representation(instance)
-        list_genres = [get_object_or_404(Genre, id=el).name for el in data['genres']]
+        list_genres = [{'name': get_object_or_404(Genre, id=el).name, 'id': el} for el in data['genres']]
         data['genres'] = list_genres
-        list_author = [get_object_or_404(Author, id=pk).name for pk in data['author']]
+        list_author = [{'name': get_object_or_404(Author, id=pk).name, 'id': pk} for pk in data['author']]
         data['author'] = list_author
         return data
+
+
+class ArtworksWithoutAuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Artworks
+        fields = ('id', 'name', 'date', 'file')
 
 
 class AuthorDetailSerializer(serializers.ModelSerializer):
@@ -46,40 +53,33 @@ class AuthorDetailSerializer(serializers.ModelSerializer):
         model = Author
         fields = '__all__'
 
+    def get_genres(self, instance):
+        artworks = Artworks.objects.filter(author=instance).select_related('genres')
+        genre_counts = artworks.values('genres__id', 'genres__name').annotate(count=Count('id'))
+        result = {
+            'all': artworks.count(),
+            'genres': []
+        }
+        for genre_count in genre_counts:
+            genre_id = genre_count['genres__id']
+            genre_name = genre_count['genres__name']
+            count = genre_count['count']
+            result['genres'].append(
+                {
+                    'id': genre_id,
+                    'name': genre_name,
+                    'count': count
+                }
+            )
+        return result
+
     def to_representation(self, instance):
         """
         :param instance:
         :return:
         """
         data = super().to_representation(instance)
-        result = {
-            'all': 0,
-            'genres': []
-        }
-        for artwork in Artworks.objects.filter(author=instance).only('id', 'name', 'date'):
-            for genre in artwork.genres.all().only('name'):
-                result['all'] += 1
-                for el in result['genres']:
-                    if el['name'] == genre.name:
-                        el['count'] += 1
-                        el['values'].append({
-                            'id': artwork.id,
-                            'name': artwork.name,
-                            'date': artwork.date
-                        })
-                        break
-                else:
-                    result['genres'].append({
-                        'name': genre.name,
-                        'id': genre.id,
-                        'count': 1,
-                        'values': [{
-                            'id': artwork.id,
-                            'name': artwork.name,
-                            'date': artwork.date
-                        }]
-                    })
-        data.update(result)
+        data.update(self.get_genres(instance=instance))
         return data
 
 
@@ -87,6 +87,12 @@ class SettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Settings
         fields = ('percent', 'size')
+
+
+class SettingsRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Settings
+        fields = '__all__'
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -107,7 +113,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         user = User(**attrs)
         password = attrs.get("password")
-
         try:
             validate_password(password, user)
         except django_exceptions.ValidationError as e:
@@ -122,12 +127,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user = None
         try:
             user = self.perform_create(validated_data)
-            Settings.objects.create(
-                user=user
-            )
-        except IntegrityError:
-            self.fail("cannot_create_user")
-        except Exception:
+            serializer = SettingsRegisterSerializer(data={'user': user.id})
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                user.delete()
+                user = None
+        except (IntegrityError, Exception):
             self.fail("cannot_create_user")
         return user
 
@@ -149,7 +155,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
 class BookStateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookState
-        fields = '__all__'
+        fields = ('user', 'epubcfi', 'percent', 'book')
 
     def validate(self, data):
         if BookState.objects.filter(user=data.get('user')).exists() and BookState.objects.filter(
@@ -187,11 +193,9 @@ class ListBookStateSerializer(serializers.ModelSerializer):
         return data
 
 
-class SelectSearch(serializers.Serializer):
-    author = serializers.IntegerField()
-    artworks = serializers.IntegerField()
-
-
+######
+# Сериализация данных
+######
 class ForSearchSerializer(serializers.JSONField):
     class Meta:
         swagger_schema_fields = {
@@ -280,6 +284,37 @@ class ForSearchAuthorSerializer(serializers.JSONField):
         }
 
 
+class FirstLitterSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=1, help_text='Первая буква')
+    count = serializers.IntegerField(help_text='Кол-во')
+
+
 class SearchSerializer(serializers.Serializer):
     author = ForSearchAuthorSerializer()
     artworks = ForSearchSerializer()
+
+
+class AuthorForCategorySerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+    id = serializers.IntegerField(read_only=True)
+
+
+class GenreForCategorySerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+    id = serializers.IntegerField(read_only=True)
+
+
+class YearArtworksSerializer(serializers.ModelSerializer):
+    read = serializers.IntegerField(allow_null=True, help_text='Возвращает проценты или null')
+    author = AuthorForCategorySerializer(many=True)
+    genres = GenreForCategorySerializer(many=True)
+
+    class Meta:
+        model = Artworks
+        fields = '__all__'
+
+
+class FeedBackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feedback
+        fields = ('text',)

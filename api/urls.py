@@ -3,13 +3,12 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-from api.views import (CreateBookState, CreateFeedBack, CustomRegistrationView,
-                       DeleteBookState, FilterArtworks, FilterAuthor,
-                       FilterGenreArtworks, FilterYearArtworks,
-                       FirstLetterAuthor, GenreListCategory, GetAuthor,
-                       GetBook, GetGenreAuthorBooks, GetSettings, ListAPIView,
-                       ListBookState, Search, UpdateStateBook,
-                       YearCategoryArtworks)
+from api.views import (CreateBookState, CreateFeedBack, DeleteBookState,
+                       FilterArtworks, FilterAuthor, FilterGenreArtworks,
+                       FilterYearArtworks, FirstLetterAuthor,
+                       GenreListCategory, GetAuthor, GetBook,
+                       GetGenreAuthorBooks, GetSettings, ListBookState, Search,
+                       UpdateStateBook, YearCategoryArtworks)
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -56,7 +55,7 @@ urlpatterns = [
     path('api/books-genre-author/', GetGenreAuthorBooks.as_view()),
 
     # Получение книги
-    path('api/book/<int:pk>/', GetBook.as_view()),
+    path('api/book/<int:pk>/', GetBook.as_view()),  # проверить #TODO
 
     # Форма обратной связи
     path('api/feedback/', CreateFeedBack.as_view()),
@@ -65,11 +64,11 @@ urlpatterns = [
     path('api/book-state/', CreateBookState.as_view()),
 
     # Список книг у пользователя
-    path('api/books/', ListBookState.as_view()),
+    path('api/books/', ListBookState.as_view()),  # TODO Доработать
 
     # Удаление книги из списка чтения
-    path('api/delete-book-state/<int:pk>/', DeleteBookState.as_view()),
+    path('api/delete-book-state/<int:pk>/', DeleteBookState.as_view()),  # TODO Доработать
     # Обновление состояния книги
-    path('api/update-state-book/<int:pk>/', UpdateStateBook.as_view()),
+    path('api/update-state-book/<int:pk>/', UpdateStateBook.as_view()),  # TODO Доработать
 
 ]
