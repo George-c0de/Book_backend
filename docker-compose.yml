@@ -13,8 +13,7 @@ services:
     restart: always
     volumes:
       - .:/app
-      - static_volume:/home/app/web/staticfiles
-      - media_volume:/home/app/web/media
+      - /app/web/static:/static
     depends_on:
       - db
     env_file:
@@ -23,10 +22,7 @@ services:
   nginx:
     build: ./nginx
     volumes:
-      - static_volume:/home/app/web/staticfiles
-      - static_volume:/web
-      - static_volume:/static
-      - media_volume:/home/app/web/media
+      - /app/web/static:/static
     ports:
       - "80:80"
     depends_on:
