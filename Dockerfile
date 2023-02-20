@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.10
 # Создать директорию вашего приложения.
 RUN mkdir /app
 RUN mkdir /app/staticfiles

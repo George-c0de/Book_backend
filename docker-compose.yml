@@ -16,7 +16,6 @@ services:
       - static_volume:/home/app/web/staticfiles
       - media_volume:/home/app/web/media
     depends_on:
-      - redis
       - db
     env_file:
       - ./.env
