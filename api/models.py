@@ -65,7 +65,7 @@ class Artworks(models.Model):
     field_1 = models.CharField('Поле 1', max_length=150)
     field_2 = models.CharField('Поле 2', max_length=150)
 
-    file = models.FileField('Файл книги', upload_to='book')
+    file = models.FileField('Файл книги', upload_to='book/')
 
     genres = models.ManyToManyField(Genre)
 

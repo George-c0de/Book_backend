@@ -169,16 +169,18 @@ class UpdateBookStateSerializer(serializers.ModelSerializer):
         model = BookState
         fields = '__all__'
 
-    def validate(self, data):
-        if data.get('percent', 0) == 100:
-            data.get['show'] = False
-        return data
+    def update(self, instance, validated_data):
+        if validated_data.get('percent', 0) == 100:
+            validated_data['show'] = False
+        else:
+            validated_data['show'] = True
+        return super().update(instance, validated_data)
 
 
 class ListBookStateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookState
-        fields = ('id', 'percent', 'book')
+        fields = ('percent', 'book')
 
     def to_representation(self, instance):
         """
@@ -318,3 +320,20 @@ class FeedBackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
         fields = ('text',)
+
+
+class NameSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+
+
+class BookSerializer(serializers.Serializer):
+    percent = serializers.IntegerField(min_value=0, max_value=100)
+    book = serializers.IntegerField(read_only=True, label='id книги')
+    name = serializers.CharField(max_length=150)
+    author = NameSerializer(many=True)
+
+
+class BookGetSerializer(serializers.Serializer):
+    file = serializers.FileField()
+    epubcfi = serializers.CharField(max_length=150)
+    percent = serializers.IntegerField(max_value=100, min_value=0)
