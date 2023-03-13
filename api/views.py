@@ -155,10 +155,10 @@ class Search(GenericAPIView):
             ).get_str()
         elif artwork:
             artworks = Artworks.objects.filter(name__icontains=value)
-            data['artworks'] = data = ArtworksSerializer(artworks, many=True).data
+            data['artworks'] = ArtworksSerializer(artworks, many=True).data
             for el in data.get('artworks', []):
                 el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
-            data['artworks'] = PaginationApiView(data=data, request=request)
+            data['artworks'] = PaginationApiView(data=data['artworks'], request=request).get_str()
         else:
             authors = Author.objects.filter(name__icontains=value)
             artworks = Artworks.objects.filter(name__icontains=value)
@@ -171,12 +171,13 @@ class Search(GenericAPIView):
             new_data = []
             AUTHOR = 'author'
             ARTWORKS = 'artworks'
-            for author_t, artw_t in zip(data['authors'], data['artworks']):
+            for author_t in data['authors']:
                 author_t['type'] = AUTHOR
+                new_data.append(author_t)
+            for artw_t in data['artworks']:
                 artw_t['type'] = ARTWORKS
-                new_data.extend((author_t, artw_t))
+                new_data.append(artw_t)
             data = PaginationApiView(data=new_data, request=request).get_str()
-
         return Response(status=status.HTTP_200_OK, data=data)
 
 
