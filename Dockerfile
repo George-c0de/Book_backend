@@ -15,12 +15,11 @@ RUN pip3 install -r /app/requirements.txt --no-cache-dir
 COPY / /app
 # Сделать директорию /app рабочей директорией.
 WORKDIR /app
-# copy entrypoint-prod.sh
-COPY ./entrypoint.sh /app
-# Выполнить запуск сервера разработки при старте контейнера.
 
-# CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-# run entrypoint.sh
-CMD ["gunicorn", "Book_backend.wsgi:application", "--bind", "0:8000" ]
+# copy entrypoint-prod.sh
+
+COPY ./entrypoint.sh /app
 RUN ["chmod", "+x", "./entrypoint.sh"]
+
+CMD ["gunicorn", "Book_backend.wsgi:application", "--bind", "0:8000" ]
 ENTRYPOINT ["./entrypoint.sh"]
