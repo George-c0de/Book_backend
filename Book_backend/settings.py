@@ -20,6 +20,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     '5.63.158.47',
+    '95.163.243.233',
 ]
 
 # Большие буквы
@@ -28,6 +29,7 @@ ALL_HOSTS = (
     'http://localhost:3000',
     "http://127.0.0.1:3000",
     'http://5.63.158.47/',
+    'http://95.163.243.233/',
 )
 
 CSRF_TRUSTED_ORIGINS = ALL_HOSTS
