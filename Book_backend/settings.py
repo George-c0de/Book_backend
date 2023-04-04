@@ -165,7 +165,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGIN_FIELD = 'email'
+AUTH_USER_MODEL = 'api.CustomUser'
+
 DJOSER = {
+    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
     'SERIALIZERS': {
         'activation': 'djoser.serializers.ActivationSerializer',
         'password_reset': 'djoser.serializers.SendEmailResetSerializer',
@@ -187,3 +191,12 @@ DJOSER = {
         'token_create': 'djoser.serializers.TokenCreateSerializer',
     }
 }
+###########
+# Email Send
+###########
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = env('SEND_EMAIL')
+EMAIL_HOST_PASSWORD = env('SEND_PASSWORD')
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = env('SEND_EMAIL')

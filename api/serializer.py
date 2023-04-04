@@ -1,4 +1,3 @@
-from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 from django.db import IntegrityError, transaction
@@ -9,6 +8,8 @@ from drf_yasg import openapi
 from rest_framework import serializers
 
 from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
+
+from .models import CustomUser as User
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -45,7 +46,7 @@ class ArtworksSerializer(serializers.ModelSerializer):
 class ArtworksWithoutAuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artworks
-        fields = ('id', 'name', 'date', 'file')
+        fields = ('id', 'name', 'date', 'file', 'info',)
 
 
 class AuthorDetailSerializer(serializers.ModelSerializer):
@@ -120,7 +121,10 @@ class UserCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"password": serializer_error["non_field_errors"]}
             )
-
+        if User.objects.filter(email=attrs.get('email')).exists():
+            raise serializers.ValidationError(
+                {"email": "Пользователь с таким email уже создан"}
+            )
         return attrs
 
     def create(self, validated_data):
