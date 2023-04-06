@@ -109,6 +109,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
             settings.LOGIN_FIELD,
             settings.USER_ID_FIELD,
             "password",
+            'first_name',
+            'last_name'
         )
 
     def validate(self, attrs):
