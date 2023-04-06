@@ -96,6 +96,12 @@ class SettingsRegisterSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CurrentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('email', 'id', 'first_name', 'last_name', )
+
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(style={"input_type": "password"}, write_only=True)
 
