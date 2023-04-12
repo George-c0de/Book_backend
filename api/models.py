@@ -172,7 +172,7 @@ class Feedback(models.Model):
     def __str__(self):
         return f'{self.status}'
 
-    text = models.TextField('Текст обращения')
+    text = models.CharField('Текст обращения', max_length=2000)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 
     status = models.CharField(

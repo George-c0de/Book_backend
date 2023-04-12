@@ -1,5 +1,5 @@
 from collections import defaultdict
-
+from rest_framework.parsers import JSONParser
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
@@ -372,6 +372,7 @@ class CreateFeedBack(CreateAPIView):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
     permission_classes = (IsAuthenticated,)
+    parser_classes = (JSONParser,)
 
     @swagger_auto_schema(
         request_body=openapi.Schema(
