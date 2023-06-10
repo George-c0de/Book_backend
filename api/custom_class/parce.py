@@ -1,3 +1,5 @@
+import logging
+
 import openpyxl
 from api.models import Author, Artworks, Genre
 
@@ -54,6 +56,7 @@ class ParseXML:
             forma = row[4]
             zhanr = row[5]
             tagi = row[6]
+            logging.info('start')
             if Artworks.objects.filter(name=proizvedenie).exists():
                 continue
 
