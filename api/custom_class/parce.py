@@ -56,7 +56,7 @@ class ParseXML:
             forma = row[4]
             zhanr = row[5]
             tagi = row[6]
-            logging.info('start')
+            logging.error('start')
             if Artworks.objects.filter(name=proizvedenie).exists():
                 continue
 
