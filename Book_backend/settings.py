@@ -188,3 +188,4 @@ DJOSER = {
         'token_create': 'djoser.serializers.TokenCreateSerializer',
     }
 }
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000

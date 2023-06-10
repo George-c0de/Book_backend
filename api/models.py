@@ -37,14 +37,14 @@ class Author(models.Model):
         return f'{self.name}'
 
     name = models.CharField('ФИО автора', max_length=300)
-    name_en = models.CharField('ФИО автора транслитом', max_length=300)
+    name_en = models.CharField('ФИО автора транслитом', max_length=300, blank=True)
 
-    date_birth = models.DateField('Дата рождения')
-    date_death = models.DateField('Дата смерти', null=True)
+    date_birth = models.DateField('Дата рождения', blank=True,null=True)
+    date_death = models.DateField('Дата смерти', null=True, blank=True)
 
-    photo = models.ImageField('Фотография', upload_to='photo_author')
+    photo = models.ImageField('Фотография', upload_to='photo_author', blank=True)
 
-    info = models.TextField('Информация')
+    info = models.TextField('Информация', blank=True)
 
 
 class Artworks(models.Model):
@@ -58,14 +58,14 @@ class Artworks(models.Model):
     author = models.ManyToManyField(Author)
 
     name = models.CharField('Название', max_length=300)
-    name_en = models.CharField('Название транслитом', max_length=300)
+    name_en = models.CharField('Название транслитом', max_length=300, blank=True)
 
     date = models.CharField('Дата написания', max_length=4)
 
     field_1 = models.CharField('Поле 1', max_length=150)
     field_2 = models.CharField('Поле 2', max_length=150)
 
-    file = models.FileField('Файл книги', upload_to='book')
+    file = models.FileField('Файл книги', upload_to='book', max_length=250)
 
     genres = models.ManyToManyField(Genre)
 

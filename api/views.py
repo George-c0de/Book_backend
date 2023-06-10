@@ -12,6 +12,7 @@ from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from api.custom_class.parce import ParseXML
 from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
 from api.serializer import (ArtworksSerializer,
                             ArtworksWithoutAuthorSerializer,
@@ -564,3 +565,4 @@ class GetGenreAuthorBooks(GenericAPIView):
         for artwork in objs:
             artwork['read'] = check_in_reading_list(user=request.user.id, book=artwork.get('id'))
         return Response(status=status.HTTP_200_OK, data=objs)
+# ParseXML(file_path='Library.xlsx').parse_excel_file()
