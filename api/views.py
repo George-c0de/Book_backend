@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from rest_framework.parsers import JSONParser
 from django.contrib.auth.models import User
@@ -653,4 +654,5 @@ class BookCreate(GenericAPIView):
             ParseXML(file_path=file).parse_excel_file()
             return Response(status=200)
         except Exception as e:
+            logging.error(e)
             return Response(status=400)
