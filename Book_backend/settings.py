@@ -11,15 +11,15 @@ env = environ.Env(
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 
-DEBUG = True
+DEBUG = env('DEBUG')
 ################
 # CORS
 ################
 ALLOWED_HOSTS = [
+    '194.58.122.184',
     "127.0.0.1",
     "localhost",
     "127.0.0.1",
-    '5.63.158.47',
 ]
 
 # Большие буквы
@@ -27,7 +27,8 @@ ALL_HOSTS = (
     "http://127.0.0.1:8000",
     'http://localhost:3000',
     "http://127.0.0.1:3000",
-    'http://5.63.158.47/',
+    'http://194.58.122.184/',
+    'https://194.58.122.184/',
 )
 
 CSRF_TRUSTED_ORIGINS = ALL_HOSTS
@@ -158,15 +159,16 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/staticfiles/'
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MEDIA_URL = "/mediafiles/"
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGIN_FIELD = 'email'
+AUTH_USER_MODEL = 'api.CustomUser'
+
 DJOSER = {
+    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
     'SERIALIZERS': {
         'activation': 'djoser.serializers.ActivationSerializer',
         'password_reset': 'djoser.serializers.SendEmailResetSerializer',
@@ -183,9 +185,17 @@ DJOSER = {
         'user_create_password_retype': 'djoser.serializers.UserCreatePasswordRetypeSerializer',
         'user_delete': 'djoser.serializers.UserDeleteSerializer',
         'user': 'djoser.serializers.UserSerializer',
-        'current_user': 'djoser.serializers.UserSerializer',
+        'current_user': 'api.serializer.CurrentUserSerializer',
         'token': 'djoser.serializers.TokenSerializer',
         'token_create': 'djoser.serializers.TokenCreateSerializer',
     }
 }
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+###########
+# Email Send
+###########
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = env('SEND_EMAIL')
+EMAIL_HOST_PASSWORD = env('SEND_PASSWORD')
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = env('SEND_EMAIL')

@@ -1,13 +1,12 @@
 from collections import defaultdict
-
+from rest_framework.parsers import JSONParser
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from rest_framework.generics import (CreateAPIView, GenericAPIView,
-                                     ListAPIView, UpdateAPIView)
+from rest_framework.generics import CreateAPIView, GenericAPIView, ListAPIView
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,11 +16,12 @@ from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
 from api.serializer import (ArtworksSerializer,
                             ArtworksWithoutAuthorSerializer,
                             AuthorDetailSerializer, AuthorSerializer,
+                            BookGetSerializer, BookSerializer,
                             BookStateSerializer, FeedbackSerializer,
                             FeedBackSerializer, FirstLitterSerializer,
                             ListBookStateSerializer, SearchSerializer,
                             SettingsSerializer, UpdateBookStateSerializer,
-                            UserCreateSerializer, YearArtworksSerializer)
+                            YearArtworksSerializer)
 
 
 class PaginationApiView:
@@ -60,6 +60,9 @@ class PaginationApiView:
             "total": self.total,
             "items": self.items,
         }
+
+
+RESPONSE = ''
 
 
 def get_first_litters(model) -> list:
@@ -153,10 +156,10 @@ class Search(GenericAPIView):
             ).get_str()
         elif artwork:
             artworks = Artworks.objects.filter(name__icontains=value)
-            data['artworks'] = data = ArtworksSerializer(artworks, many=True).data
+            data['artworks'] = ArtworksSerializer(artworks, many=True).data
             for el in data.get('artworks', []):
                 el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
-            data['artworks'] = PaginationApiView(data=data, request=request)
+            data['artworks'] = PaginationApiView(data=data['artworks'], request=request).get_str()
         else:
             authors = Author.objects.filter(name__icontains=value)
             artworks = Artworks.objects.filter(name__icontains=value)
@@ -169,12 +172,13 @@ class Search(GenericAPIView):
             new_data = []
             AUTHOR = 'author'
             ARTWORKS = 'artworks'
-            for author_t, artw_t in zip(data['authors'], data['artworks']):
+            for author_t in data['authors']:
                 author_t['type'] = AUTHOR
+                new_data.append(author_t)
+            for artw_t in data['artworks']:
                 artw_t['type'] = ARTWORKS
-                new_data.extend((author_t, artw_t))
+                new_data.append(artw_t)
             data = PaginationApiView(data=new_data, request=request).get_str()
-
         return Response(status=status.HTTP_200_OK, data=data)
 
 
@@ -295,6 +299,7 @@ def last_book_by_author(user: int, author: Author) -> dict | None:
 
 
 class GetAuthor(RetrieveModelMixin, GenericAPIView):
+    """ Получение автора """
     queryset = Author.objects.all()
     serializer_class = AuthorDetailSerializer
 
@@ -309,22 +314,42 @@ class GetAuthor(RetrieveModelMixin, GenericAPIView):
         return self.retrieve(request, pk=pk)
 
 
-class GetBook(RetrieveModelMixin, GenericAPIView):
-    queryset = Artworks.objects.all()
-    serializer_class = ArtworksSerializer
+class GetBook(GenericAPIView):
+    """Получение книги, файл, точка остановки и проценты"""
+    queryset = BookState.objects.all()
+    serializer_class = BookGetSerializer
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        for el in serializer.data:
-            el['read'] = check_in_reading_list(user=request.user.id, book=el.get('id'))
-        return Response(serializer.data)
-
+    @swagger_auto_schema(
+        responses={
+            201: openapi.Response('Created', schema=BookGetSerializer()),
+            400: openapi.Response('Bad Request', schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'errors': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                        )
+                    )
+                }
+            )),
+            401: openapi.Response('Authentication credentials were not provided.')
+        },
+    )
     def get(self, request, pk):
-        return self.retrieve(request, pk=pk)
+        book = get_object_or_404(Artworks, id=pk)
+        book_state = get_object_or_404(self.get_queryset().filter(user=request.user.id), book_id=pk)
+        data = {
+            'file': book.file,
+            'epubcfi': book_state.epubcfi,
+            'percent': book_state.percent,
+        }
+        serializer = self.get_serializer(data)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
 class GetSettings(GenericAPIView):
+    """Получение настроек"""
     serializer_class = SettingsSerializer
     queryset = Settings.objects.all()
     permission_classes = (IsAuthenticated,)
@@ -343,28 +368,12 @@ class GetSettings(GenericAPIView):
         return Response(status=status.HTTP_200_OK, data=obj_ser.data)
 
 
-class CustomRegistrationView(CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserCreateSerializer
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        Settings.objects.create(
-            user=serializer.data.id
-        )
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    def get(self, request, *args, **kwargs):
-        return self.create(request)
-
-
 class CreateFeedBack(CreateAPIView):
+    """Создание сообщения для обратной связи"""
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
     permission_classes = (IsAuthenticated,)
+    parser_classes = (JSONParser,)
 
     @swagger_auto_schema(
         request_body=openapi.Schema(
@@ -405,6 +414,7 @@ class CreateFeedBack(CreateAPIView):
 
 
 class CreateBookState(CreateAPIView):
+    """Добавление книги для чтения"""
     queryset = BookState.objects.all()
     serializer_class = BookStateSerializer
     permission_classes = (IsAuthenticated,)
@@ -450,6 +460,7 @@ class CreateBookState(CreateAPIView):
 
 
 class ListBookState(ListModelMixin, GenericAPIView):
+    """Список книг для чтения"""
     queryset = BookState.objects.filter(show=True)
     serializer_class = ListBookStateSerializer
     permission_classes = (IsAuthenticated,)
@@ -459,6 +470,23 @@ class ListBookState(ListModelMixin, GenericAPIView):
         serializer = self.get_serializer_class()(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response('Successful Response', schema=BookSerializer()),
+            400: openapi.Response('Bad Request', schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'errors': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                        )
+                    )
+                }
+            )),
+            401: openapi.Response('Authentication credentials were not provided.')
+        },
+    )
     def get(self, request):
         return self.list(request)
 
@@ -477,12 +505,56 @@ class DeleteBookState(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class UpdateStateBook(UpdateAPIView):
+class UpdateStateBook(GenericAPIView):
+    """Обновление состояния книги для чтения"""
     queryset = BookState.objects.all()
     serializer_class = UpdateBookStateSerializer
+    permission_classes = (IsAuthenticated,)
+
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['epubcfi', 'percent'],
+            properties={
+                'epubcfi': openapi.Schema(type=openapi.TYPE_STRING),
+                'percent': openapi.Schema(type=openapi.TYPE_INTEGER)
+            },
+        ),
+        responses={
+            200: openapi.Response('Successful Response', schema=UpdateBookStateSerializer()),
+            400: openapi.Response('Bad Request', schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'errors': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                        )
+                    )
+                }
+            )),
+            401: openapi.Response('Authentication credentials were not provided.')
+        },
+    )
+    def patch(self, request, pk, *args, **kwargs):
+        data = request.data
+        data['user'] = request.user.id
+        data['book'] = get_object_or_404(Artworks, id=pk).id
+        if BookState.objects.filter(user=request.user.id, book=data['book']).exists():
+            book_state = get_object_or_404(BookState.objects.filter(user=request.user.id), book=data['book'])
+            serializer = UpdateBookStateSerializer(book_state, data=data)
+        else:
+            serializer = UpdateBookStateSerializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_200_OK, data=serializer.data)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
 
 
 class FilterYearArtworks(GenericAPIView):
+    """Поиск по году"""
     serializer_class = ArtworksSerializer
     queryset = Artworks.objects.all()
 
@@ -506,6 +578,7 @@ class FilterYearArtworks(GenericAPIView):
 
 
 class FilterGenreArtworks(GenericAPIView):
+    """Получение произведений по жанру"""
     serializer_class = ArtworksSerializer
     queryset = Artworks.objects.all()
 
@@ -529,6 +602,7 @@ class FilterGenreArtworks(GenericAPIView):
 
 
 class GetGenreAuthorBooks(GenericAPIView):
+    """Получение книг по жанру и автору"""
     queryset = Artworks.objects.all()
     serializer_class = ArtworksWithoutAuthorSerializer
 

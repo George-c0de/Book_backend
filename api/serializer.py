@@ -1,4 +1,3 @@
-from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 from django.db import IntegrityError, transaction
@@ -9,6 +8,8 @@ from drf_yasg import openapi
 from rest_framework import serializers
 
 from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
+
+from .models import CustomUser as User
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -45,7 +46,7 @@ class ArtworksSerializer(serializers.ModelSerializer):
 class ArtworksWithoutAuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artworks
-        fields = ('id', 'name', 'date', 'file')
+        fields = ('id', 'name', 'date', 'file', 'info',)
 
 
 class AuthorDetailSerializer(serializers.ModelSerializer):
@@ -95,6 +96,12 @@ class SettingsRegisterSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CurrentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('email', 'id', 'first_name', 'last_name', )
+
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(style={"input_type": "password"}, write_only=True)
 
@@ -108,6 +115,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
             settings.LOGIN_FIELD,
             settings.USER_ID_FIELD,
             "password",
+            'first_name',
+            'last_name'
         )
 
     def validate(self, attrs):
@@ -120,7 +129,10 @@ class UserCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"password": serializer_error["non_field_errors"]}
             )
-
+        if User.objects.filter(email=attrs.get('email')).exists():
+            raise serializers.ValidationError(
+                {"email": "Пользователь с таким email уже создан"}
+            )
         return attrs
 
     def create(self, validated_data):
@@ -169,16 +181,18 @@ class UpdateBookStateSerializer(serializers.ModelSerializer):
         model = BookState
         fields = '__all__'
 
-    def validate(self, data):
-        if data.get('percent', 0) == 100:
-            data.get['show'] = False
-        return data
+    def update(self, instance, validated_data):
+        if validated_data.get('percent', 0) == 100:
+            validated_data['show'] = False
+        else:
+            validated_data['show'] = True
+        return super().update(instance, validated_data)
 
 
 class ListBookStateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookState
-        fields = ('id', 'percent', 'book')
+        fields = ('percent', 'book')
 
     def to_representation(self, instance):
         """
@@ -318,3 +332,20 @@ class FeedBackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
         fields = ('text',)
+
+
+class NameSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+
+
+class BookSerializer(serializers.Serializer):
+    percent = serializers.IntegerField(min_value=0, max_value=100)
+    book = serializers.IntegerField(read_only=True, label='id книги')
+    name = serializers.CharField(max_length=150)
+    author = NameSerializer(many=True)
+
+
+class BookGetSerializer(serializers.Serializer):
+    file = serializers.FileField()
+    epubcfi = serializers.CharField(max_length=150)
+    percent = serializers.IntegerField(max_value=100, min_value=0)
