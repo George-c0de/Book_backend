@@ -656,3 +656,4 @@ class BookCreate(GenericAPIView):
         except Exception as e:
             logging.error(e)
             return Response(status=400)
+ParseXML(file_path='Library.xlsx').parse_excel_file()
