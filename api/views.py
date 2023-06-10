@@ -21,7 +21,7 @@ from api.serializer import (ArtworksSerializer,
                             FeedBackSerializer, FirstLitterSerializer,
                             ListBookStateSerializer, SearchSerializer,
                             SettingsSerializer, UpdateBookStateSerializer,
-                            YearArtworksSerializer)
+                            YearArtworksSerializer, CreateSerializer)
 
 
 class PaginationApiView:
@@ -639,4 +639,18 @@ class GetGenreAuthorBooks(GenericAPIView):
         for artwork in objs:
             artwork['read'] = check_in_reading_list(user=request.user.id, book=artwork.get('id'))
         return Response(status=status.HTTP_200_OK, data=objs)
-# ParseXML(file_path='Library.xlsx').parse_excel_file()
+
+
+class BookCreate(GenericAPIView):
+    queryset = Artworks.objects.all()
+    serializer_class = CreateSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer:CreateSerializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file = serializer.validated_data['file']
+        try:
+            ParseXML(file_path=file).parse_excel_file()
+            return Response(status=200)
+        except Exception as e:
+            return Response(status=400)

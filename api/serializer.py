@@ -349,3 +349,6 @@ class BookGetSerializer(serializers.Serializer):
     file = serializers.FileField()
     epubcfi = serializers.CharField(max_length=150)
     percent = serializers.IntegerField(max_value=100, min_value=0)
+
+class CreateSerializer(serializers.Serializer):
+    file = serializers.FileField()

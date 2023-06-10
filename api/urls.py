@@ -8,7 +8,7 @@ from api.views import (CreateBookState, CreateFeedBack, FilterArtworks,
                        FirstLetterAuthor, GenreListCategory, GetAuthor,
                        GetBook, GetGenreAuthorBooks, GetSettings,
                        ListBookState, Search, UpdateStateBook,
-                       YearCategoryArtworks)
+                       YearCategoryArtworks, BookCreate)
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -71,5 +71,7 @@ urlpatterns = [
 
     # Обновление состояния книги
     path('api/update-state-book/<int:pk>/', UpdateStateBook.as_view()),
+
+    path('api/create-book/', BookCreate.as_view()),
 
 ]
