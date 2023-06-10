@@ -29,18 +29,17 @@ class ParseXML:
             genre_obj, _ = Genre.objects.get_or_create(name=genre)
             genre_ids.append(genre_obj.id)
         return genre_ids
-
-    def create_artwork(self, proizvedenie, god, nazvanie_fayla):
+    @staticmethod
+    def create_artwork(proizvedenie, god, nazvanie_fayla):
         """
         Создает произведение и возвращает объект Artworks
         """
-        artwork = Artworks.objects.create(
+        return Artworks.objects.create(
             name=proizvedenie,
             date=god,
             file=f'/media/book/{nazvanie_fayla}.epub',
         )
-        return artwork
-    def parse_excel_file(self) -> list:
+    def parse_excel_file(self):
         """
         Функция lzk парсинга книг
         :return:
@@ -70,4 +69,3 @@ class ParseXML:
             artworks.author.add(author)
             artworks.genres.add(*genres)
             artworks.author.add(author)
-        return []

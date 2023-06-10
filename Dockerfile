@@ -21,5 +21,5 @@ WORKDIR /app
 COPY ./entrypoint.sh /app
 RUN ["chmod", "+x", "./entrypoint.sh"]
 
-CMD ["gunicorn", "Book_backend.wsgi:application", "--bind", "0:8000", "--timeout", "2500"]
+CMD ["gunicorn", "Book_backend.wsgi:application", "--timeout", "2500", "--bind", "0:8000"]
 ENTRYPOINT ["./entrypoint.sh"]
