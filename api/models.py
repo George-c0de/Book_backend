@@ -150,7 +150,7 @@ class Artworks(models.Model):
     field_1 = models.CharField('Поле 1', max_length=150, blank=True)
     field_2 = models.CharField('Поле 2', max_length=150, blank=True)
 
-    file = models.FileField('Файл книги', upload_to='book/')
+    file = models.FileField('Файл книги', upload_to='book/', max_length=250)
 
     info = models.TextField('Информация о книге', blank=True)
 
