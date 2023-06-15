@@ -20,15 +20,15 @@ services:
       - media:/app/media
     depends_on:
       - db
-#  nginx:
-#    build: ./nginx
-#    volumes:
-#      - static_volume:/home/app/web/staticfiles
-#      - media:/home/app/web/media
-#    ports:
-#      - "80:80"
-#    depends_on:
-#      - web
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+      - media:/home/app/web/media
+    ports:
+      - "80:80"
+    depends_on:
+      - web
 volumes:
   db-data:
   static_volume:
