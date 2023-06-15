@@ -24,7 +24,6 @@ class ParseXML:
         """
         genre_ids = []
         zhanr = zhanr.split(',')
-        print(zhanr)
         for genre in zhanr:
             genre_obj, _ = Genre.objects.get_or_create(name=genre)
             genre_ids.append(genre_obj.id)
@@ -55,10 +54,9 @@ class ParseXML:
             forma = row[4]
             zhanr = row[5]
             tagi = row[6]
-            logging.error('start')
             if Artworks.objects.filter(name=proizvedenie).exists():
                 continue
-
+            logging.error('start')
             author = self.create_author(fio)
             genres = self.create_genres(zhanr=zhanr)
             artworks = self.create_artwork(
