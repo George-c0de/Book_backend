@@ -650,10 +650,6 @@ class BookCreate(GenericAPIView):
         serializer:CreateSerializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         file = serializer.validated_data['file']
-        try:
-            ParseXML(file_path=file).parse_excel_file()
-            return Response(status=200)
-        except Exception as e:
-            logging.error(e)
-            return Response(status=400)
-ParseXML(file_path='Library.xlsx').parse_excel_file()
+        ParseXML(file_path=file).parse_excel_file()
+        return Response(status=200)
+#ParseXML(file_path='Library.xlsx').parse_excel_file()

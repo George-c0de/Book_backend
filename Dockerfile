@@ -20,6 +20,6 @@ WORKDIR /app
 
 COPY ./entrypoint.sh /app
 RUN ["chmod", "+x", "./entrypoint.sh"]
-CMD ["python", "manage.py", "runserver"]
-# CMD ["gunicorn", "Book_backend.wsgi:application", "--timeout", "5000", "--bind", "0:8000"]
+# CMD ["python", "manage.py", "runserver"]
+CMD ["gunicorn", "Book_backend.wsgi:application", "--timeout", "10000", "--bind", "0:8000"]
 ENTRYPOINT ["./entrypoint.sh"]

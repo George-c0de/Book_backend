@@ -2,14 +2,17 @@ import logging
 
 import openpyxl
 from api.models import Author, Artworks, Genre
+import time
 
 
 class ParseXML:
     """
     Класс для парсинга книг
     """
+
     def __init__(self, file_path: str):
         self.file_path = file_path
+
     @staticmethod
     def create_author(fio):
         """
@@ -17,17 +20,19 @@ class ParseXML:
         """
         author, _ = Author.objects.get_or_create(name=fio)
         return author
+
     @staticmethod
     def create_genres(zhanr):
         """
         Создает жанры и возвращает список их идентификаторов
         """
-        genre_ids = []
+        genre_objs = []
         zhanr = zhanr.split(',')
         for genre in zhanr:
-            genre_obj, _ = Genre.objects.get_or_create(name=genre)
-            genre_ids.append(genre_obj.id)
-        return genre_ids
+            obj, _ = Genre.objects.get_or_create(name=genre)
+            genre_objs.append(obj.id)
+        return genre_objs
+
     @staticmethod
     def create_artwork(proizvedenie, god, nazvanie_fayla):
         """
@@ -35,9 +40,12 @@ class ParseXML:
         """
         return Artworks.objects.get_or_create(
             name=proizvedenie,
-            date=god,
-            file=f'/media/book/{nazvanie_fayla}.epub',
+            defaults={
+                'date': god,
+                'file': f'/media/book/{nazvanie_fayla}.epub',
+            }
         )
+
     def parse_excel_file(self):
         """
         Функция lzk парсинга книг
@@ -47,23 +55,40 @@ class ParseXML:
         sheet = workbook.active
 
         for row in sheet.iter_rows(min_row=2, values_only=True):
-            fio = row[0]
-            proizvedenie = row[1]
-            nazvanie_fayla = row[2]
-            god = row[3]
-            forma = row[4]
-            zhanr = row[5]
-            tagi = row[6]
+
+            fio, proizvedenie, nazvanie_fayla, god, forma, zhanr, tagi = row[:7]
             if Artworks.objects.filter(name=proizvedenie).exists():
                 continue
-            logging.error('start')
+            start_time = time.time()
             author = self.create_author(fio)
             genres = self.create_genres(zhanr=zhanr)
-            artworks = self.create_artwork(
+            artworks, _ = self.create_artwork(
                 proizvedenie=proizvedenie,
-                god = god,
+                god=god,
                 nazvanie_fayla=nazvanie_fayla,
             )
             artworks.author.add(author)
-            artworks.genres.add(*genres)
-            artworks.author.add(author)
+            artworks.genres.set(genres)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            logging.error(f"Elapsed time for parse_excel_file: {elapsed_time} seconds")
+
+
+    def create_genres_func(self):
+        workbook = openpyxl.load_workbook(self.file_path)
+        sheet = workbook.active
+
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            zhanr = row[5]
+            self.create_genres(zhanr=zhanr)
+
+    def create_author_func(self):
+        workbook = openpyxl.load_workbook(self.file_path)
+        sheet = workbook.active
+
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            fio, proizvedenie, nazvanie_fayla, god, forma, zhanr, tagi = row[:7]
+            if Artworks.objects.filter(name=proizvedenie).exists():
+                continue
+            logging.error('start')
+            self.create_author(fio)
