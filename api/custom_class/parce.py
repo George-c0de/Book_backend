@@ -34,7 +34,7 @@ class ParseXML:
         """
         Создает произведение и возвращает объект Artworks
         """
-        return Artworks.objects.create(
+        return Artworks.objects.get_or_create(
             name=proizvedenie,
             date=god,
             file=f'/media/book/{nazvanie_fayla}.epub',
