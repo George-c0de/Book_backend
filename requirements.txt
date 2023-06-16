@@ -11,3 +11,4 @@ openpyxl==3.1.2
 django-redis==5.2.0
 celery==5.2.7
 flower==1.2.0
+pandas==2.0.2
