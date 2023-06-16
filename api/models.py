@@ -121,8 +121,8 @@ class Author(models.Model):
     def __str__(self):
         return f'{self.name}'
 
-    name = models.CharField('ФИО автора', max_length=300)
-    name_en = models.CharField('ФИО автора транслитом', max_length=300, blank=True)
+    name = models.CharField('ФИО автора', max_length=400)
+    name_en = models.CharField('ФИО автора транслитом', max_length=400, blank=True)
 
     date_birth = models.DateField('Дата рождения', null=True, blank=True)
     date_death = models.DateField('Дата смерти', null=True, blank=True)
@@ -142,15 +142,15 @@ class Artworks(models.Model):
 
     author = models.ManyToManyField(Author)
 
-    name = models.CharField('Название', max_length=300)
-    name_en = models.CharField('Название транслитом', max_length=300, blank=True)
+    name = models.CharField('Название', max_length=400)
+    name_en = models.CharField('Название транслитом', max_length=400, blank=True)
 
     date = models.CharField('Дата написания', max_length=4)
 
     field_1 = models.CharField('Поле 1', max_length=150, blank=True)
     field_2 = models.CharField('Поле 2', max_length=150, blank=True)
 
-    file = models.FileField('Файл книги', upload_to='book/', max_length=250)
+    file = models.FileField('Файл книги', upload_to='book/', max_length=400)
 
     info = models.TextField('Информация о книге', blank=True)
 
