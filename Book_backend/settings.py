@@ -1,6 +1,7 @@
-import environ
 import os
 from pathlib import Path
+
+import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
@@ -16,6 +17,7 @@ DEBUG = env('DEBUG')
 ################
 ALLOWED_HOSTS = [
     '194.58.122.184',
+    "95.163.236.245",
     "127.0.0.1",
     "localhost",
     "127.0.0.1",
@@ -24,6 +26,8 @@ ALLOWED_HOSTS = [
 # Большие буквы
 ALL_HOSTS = (
     "http://127.0.0.1:8000",
+    "http://95.163.236.245",
+    "https://95.163.236.245",
     'http://localhost:3000',
     "http://127.0.0.1:3000",
     'http://194.58.122.184/',
