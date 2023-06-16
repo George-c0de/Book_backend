@@ -1,10 +1,6 @@
-import logging
+import pandas as pd
 
-import openpyxl
-
-from Book_backend import celery_app as app
 from api.models import Author, Artworks, Genre
-import time
 
 
 class ParseXML:
@@ -24,74 +20,72 @@ class ParseXML:
         return author
 
     @staticmethod
-    def create_genres(zhanr):
+    def create_genres(genre):
         """
         Создает жанры и возвращает список их идентификаторов
         """
         genre_objs = []
-        zhanr = zhanr.split(',')
-        for genre in zhanr:
+        genre = genre.split(',')
+        for genre in genre:
             obj, _ = Genre.objects.get_or_create(name=genre)
             genre_objs.append(obj.id)
         return genre_objs
 
     @staticmethod
-    def create_artwork(proizvedenie, god, nazvanie_fayla):
+    def create_artwork(name, year, file):
         """
         Создает произведение и возвращает объект Artworks
         """
         return Artworks.objects.get_or_create(
-            name=proizvedenie,
+            name=name,
             defaults={
-                'date': god,
-                'file': f'/media/book/{nazvanie_fayla}.epub',
+                'date': year,
+                'file': f'/media/book/{file}.epub',
             }
         )
-
 
     def parse_excel_file(self):
         """
         Функция lzk парсинга книг
         :return:
         """
-        workbook = openpyxl.load_workbook(self.file_path)
-        sheet = workbook.active
+        # Укажите путь к файлу Excel
+        excel_file = '../../Library.xlsx'
 
-        for row in sheet.iter_rows(min_row=2, values_only=True):
+        # Укажите имя листа в файле Excel, на котором находятся данные
+        sheet_name = 'Sheet1'
 
-            fio, proizvedenie, nazvanie_fayla, god, forma, zhanr, tagi = row[:7]
-            if Artworks.objects.filter(name=proizvedenie).exists():
+        # Чтение данных из Excel в объект DataFrame
+        df = pd.read_excel(excel_file, sheet_name=sheet_name)
+
+        # Выбор необходимых столбцов
+        required_columns = (
+            'ФИО Автора',
+            'Наименование произведения',
+            'Название файла',
+            'Год',
+            # 'Форма (Библиография)',
+            'Жанр',
+            # 'Теги',
+        )
+        selected_data = df[required_columns]
+
+        # Преобразование в массив словарей
+        data_dict = selected_data.to_dict('records')
+
+        # Вывод данных
+        for item in data_dict:
+            fio = item['ФИО Автора']
+            name = item['Наименование произведения']
+            file = item['Название файла']
+            year = item['Год']
+            # form = item['Форма (Библиография)']
+            # tag = item['Теги']
+            genre = item['Жанр']
+            if Artworks.objects.filter(name=name).exists():
                 continue
-            start_time = time.time()
-            author = self.create_author(fio)
-            genres = self.create_genres(zhanr=zhanr)
-            artworks, _ = self.create_artwork(
-                proizvedenie=proizvedenie,
-                god=god,
-                nazvanie_fayla=nazvanie_fayla,
-            )
+            author = self.create_author(fio=fio)
+            genres = self.create_genres(genre=genre)
+            artworks = self.create_artwork(name=name, year=year, file=file)
             artworks.author.add(author)
             artworks.genres.set(genres)
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-            logging.error(f"Elapsed time for parse_excel_file: {elapsed_time} seconds")
-
-
-    def create_genres_func(self):
-        workbook = openpyxl.load_workbook(self.file_path)
-        sheet = workbook.active
-
-        for row in sheet.iter_rows(min_row=2, values_only=True):
-            zhanr = row[5]
-            self.create_genres(zhanr=zhanr)
-
-    def create_author_func(self):
-        workbook = openpyxl.load_workbook(self.file_path)
-        sheet = workbook.active
-
-        for row in sheet.iter_rows(min_row=2, values_only=True):
-            fio, proizvedenie, nazvanie_fayla, god, forma, zhanr, tagi = row[:7]
-            if Artworks.objects.filter(name=proizvedenie).exists():
-                continue
-            logging.error('start')
-            self.create_author(fio)
