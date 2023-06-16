@@ -25,10 +25,11 @@ class ParseXML:
         Создает жанры и возвращает список их идентификаторов
         """
         genre_objs = []
-        genre = genre.split(',')
-        for genre in genre:
-            obj, _ = Genre.objects.get_or_create(name=genre)
-            genre_objs.append(obj.id)
+        if isinstance(genre, str):
+            genre = genre.split(',')
+            for genre in genre:
+                obj, _ = Genre.objects.get_or_create(name=genre)
+                genre_objs.append(obj.id)
         return genre_objs
 
     @staticmethod
