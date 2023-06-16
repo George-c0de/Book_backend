@@ -45,8 +45,8 @@ services:
       - media:/app/media
     environment:
       - DB_HOST=db
-      - DB_NAME=VinNumbers
-      - DB_USER=celery_user
+      - DB_NAME=book
+      - DB_USER=postgres
       - DB_PASS=123
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
