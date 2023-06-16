@@ -1,6 +1,8 @@
 import logging
 
 import openpyxl
+
+from Book_backend import celery_app as app
 from api.models import Author, Artworks, Genre
 import time
 
@@ -45,6 +47,7 @@ class ParseXML:
                 'file': f'/media/book/{nazvanie_fayla}.epub',
             }
         )
+
 
     def parse_excel_file(self):
         """

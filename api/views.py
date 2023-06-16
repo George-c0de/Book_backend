@@ -1,6 +1,5 @@
-import logging
 from collections import defaultdict
-from rest_framework.parsers import JSONParser
+
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
@@ -9,9 +8,11 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, GenericAPIView, ListAPIView
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
+from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from Book_backend import celery_app as app
 from api.custom_class.parce import ParseXML
 from api.models import Artworks, Author, BookState, Feedback, Genre, Settings
 from api.serializer import (ArtworksSerializer,
@@ -647,9 +648,14 @@ class BookCreate(GenericAPIView):
     serializer_class = CreateSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer:CreateSerializer = self.get_serializer(data=request.data)
+        serializer: CreateSerializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         file = serializer.validated_data['file']
-        ParseXML(file_path=file).parse_excel_file()
+        parce_file.apply_async()
         return Response(status=200)
-#ParseXML(file_path='Library.xlsx').parse_excel_file()
+
+
+@app.task(ignore_result=True)
+def parce_file():
+    ParseXML(file_path='Library.xlsx').parse_excel_file()
+# ParseXML(file_path='Library.xlsx').parse_excel_file()
