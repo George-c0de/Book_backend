@@ -50,7 +50,7 @@ class ParseXML:
         :return:
         """
         # Укажите путь к файлу Excel
-        excel_file = '../../Library.xlsx'
+        excel_file = 'Library.xlsx'
 
         # Укажите имя листа в файле Excel, на котором находятся данные
         sheet_name = 'Sheet1'
