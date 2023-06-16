@@ -36,13 +36,14 @@ class ParseXML:
         """
         Создает произведение и возвращает объект Artworks
         """
-        return Artworks.objects.get_or_create(
+        artwork, _ = Artworks.objects.get_or_create(
             name=name,
             defaults={
                 'date': year,
                 'file': f'/media/book/{file}.epub',
             }
         )
+        return artwork
 
     def parse_excel_file(self):
         """
@@ -59,7 +60,7 @@ class ParseXML:
         df = pd.read_excel(excel_file, sheet_name=sheet_name)
 
         # Выбор необходимых столбцов
-        required_columns = (
+        required_columns = [
             'ФИО Автора',
             'Наименование произведения',
             'Название файла',
@@ -67,7 +68,7 @@ class ParseXML:
             'Форма (Библиография)',
             'Жанр',
             'Теги',
-        )
+        ]
         selected_data = df[required_columns]
 
         # Преобразование в массив словарей
@@ -89,3 +90,4 @@ class ParseXML:
             artworks = self.create_artwork(name=name, year=year, file=file)
             artworks.author.add(author)
             artworks.genres.set(genres)
+
